@@ -1,0 +1,50 @@
+plugins {
+    id 'org.springframework.boot' version '2.3.1.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+    id 'com.palantir.docker' version '0.25.0'
+    id 'com.palantir.docker-run' version '0.25.0'
+    id 'java'
+}
+
+group = 'com.test.elk'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+docker {
+    name 'dkds/config-service:latest'
+    copySpec.from("build").into("build")
+}
+docker.dependsOn(build as Task)
+
+ext {
+    set('springCloudVersion', "Hoxton.SR6")
+}
+
+dependencies {
+    implementation 'org.springframework.cloud:spring-cloud-config-server'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
+task unpack(type: Copy) {
+    delete "${buildDir}/dist"
+    def zipFile = file("${buildDir}/libs/${project.name}-${version}.jar")
+    def outputDir = file("${buildDir}/dist")
+    from zipTree(zipFile)
+    into outputDir
+}
+(build as Task).finalizedBy(['unpack', 'docker'])
